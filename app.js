@@ -87,7 +87,7 @@ async function init(config) {
     canvas.width = Math.max(1, Math.round(image.width * scale));
     canvas.height = Math.max(1, Math.round(image.height * scale));
     const ctx = canvas.getContext("2d");
-    ctx.filter = "blur(2px) saturate(35%)";
+    ctx.filter = "blur(2px) saturate(65%)";
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -100,7 +100,7 @@ async function init(config) {
         color: 0xd6e1d9,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.055,
+        opacity: 0.08,
         depthWrite: false,
         forceSinglePass: true,
       }),
