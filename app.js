@@ -100,7 +100,7 @@ async function init(config) {
         color: 0xd6e1d9,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.08,
+        opacity: 0.2,
         depthWrite: false,
         forceSinglePass: true,
       }),
