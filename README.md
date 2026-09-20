@@ -15,16 +15,17 @@ Videos are processed on your device. The hosted app does not upload selected fil
 
 ## Controls
 
-| Control                      | What it does                                                                        |
-| ---------------------------- | ----------------------------------------------------------------------------------- |
-| Play / Pause or Space        | Start or pause playback. Space works when a form control is not focused.            |
-| Restart                      | Rebuild from the beginning.                                                         |
-| Timeline                     | Scrub forward or backward; the volume follows the selected time.                    |
-| Layer spacing                | Separate the one-second slabs to reveal earlier images. Keep **Solid** for no gaps. |
-| Depth per second             | Adjust how much the cuboid grows each second.                                       |
-| Auto-rotate                  | Orbit automatically, including during playback.                                     |
-| Perspective / six face views | Move to a preset camera position.                                                   |
-| Sound / Speed / Loop         | Control audio, playback speed, and repetition. Loop is off by default.              |
+| Control                      | What it does                                                                                                    |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Play / Pause or Space        | Start or pause playback. Space works when a form control is not focused.                                        |
+| Restart                      | Rebuild from the beginning.                                                                                     |
+| Timeline                     | Scrub forward or backward; the volume follows the selected time.                                                |
+| Layer spacing                | Separate the one-second slabs to reveal earlier images. Keep **Solid** for no gaps.                             |
+| Depth per second             | Adjust how much the cuboid grows each second.                                                                   |
+| Ghost future frames          | Show a very faint, blurred preview of the unplayed volume. Enabled by default; disappears as playback fills it. |
+| Auto-rotate                  | Orbit automatically, including during playback.                                                                 |
+| Perspective / six face views | Move to a preset camera position.                                                                               |
+| Sound / Speed / Loop         | Control audio, playback speed, and repetition. Loop is off by default.                                          |
 
 ## Run locally
 

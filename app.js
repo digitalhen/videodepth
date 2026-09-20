@@ -4,6 +4,13 @@ import { OrbitControls } from "./vendor/OrbitControls.js";
 const $ = (id) => document.getElementById(id),
   video = $("video"),
   stage = $("viewport");
+const playbackBar = document.querySelector("footer");
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty(
+    "--playback-height",
+    `${playbackBar.getBoundingClientRect().height}px`,
+  );
+}).observe(playbackBar);
 async function init(config) {
   const scene = new THREE.Scene(),
     camera = new THREE.PerspectiveCamera(38, 1, 0.01, 150);
@@ -70,16 +77,44 @@ async function init(config) {
       quad,
     );
     faces.forEach((f) => g.add(f));
-    const line = new THREE.LineSegments(
-      new THREE.EdgesGeometry(new THREE.BoxGeometry(width, height, 1)),
-      new THREE.LineBasicMaterial({
-        color: 0xd7f1cf,
+    return { g, faces };
+  });
+  const ghostTextures = [left, right, top, bottom, ...frames].map((source) => {
+    const canvas = document.createElement("canvas");
+    // Downsampling and blur turn hard image detail into a faint haze.
+    const image = source.image;
+    const scale = Math.min(1, 256 / Math.max(image.width, image.height));
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    const ctx = canvas.getContext("2d");
+    ctx.filter = "blur(2px) saturate(35%)";
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  });
+  const ghostMaterials = ghostTextures.map(
+    (map) =>
+      new THREE.MeshBasicMaterial({
+        map,
+        color: 0xd6e1d9,
+        side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.24,
+        opacity: 0.055,
+        depthWrite: false,
+        forceSinglePass: true,
       }),
-    );
-    g.add(line);
-    return { g, faces, line };
+  );
+  const ghosts = Array.from({ length: count }, (_, i) => {
+    const g = new THREE.Group();
+    root.add(g);
+    const faces = [
+      ...ghostMaterials.slice(0, 4),
+      ghostMaterials[4 + i],
+      ghostMaterials[4 + Math.min(i + 1, count - 1)],
+    ].map(quad);
+    faces.forEach((f) => g.add(f));
+    return { g, faces };
   });
   const currentOutline = new THREE.LineLoop(
     new THREE.BufferGeometry().setFromPoints([
@@ -99,14 +134,111 @@ async function init(config) {
       [1, 1],
       [0, 1],
     ];
+  function updateFaces(f, a, b, ta, tb) {
+    set(
+      f[0],
+      [
+        [-x, -y, a],
+        [-x, -y, b],
+        [-x, y, b],
+        [-x, y, a],
+      ],
+      [
+        [ta, 0],
+        [tb, 0],
+        [tb, 1],
+        [ta, 1],
+      ],
+    );
+    set(
+      f[1],
+      [
+        [x, -y, a],
+        [x, -y, b],
+        [x, y, b],
+        [x, y, a],
+      ],
+      [
+        [ta, 0],
+        [tb, 0],
+        [tb, 1],
+        [ta, 1],
+      ],
+    );
+    set(
+      f[2],
+      [
+        [-x, y, a],
+        [x, y, a],
+        [x, y, b],
+        [-x, y, b],
+      ],
+      [
+        [0, 1 - ta],
+        [1, 1 - ta],
+        [1, 1 - tb],
+        [0, 1 - tb],
+      ],
+    );
+    set(
+      f[3],
+      [
+        [-x, -y, a],
+        [x, -y, a],
+        [x, -y, b],
+        [-x, -y, b],
+      ],
+      [
+        [0, 1 - ta],
+        [1, 1 - ta],
+        [1, 1 - tb],
+        [0, 1 - tb],
+      ],
+    );
+    set(
+      f[4],
+      [
+        [-x, -y, a],
+        [x, -y, a],
+        [x, y, a],
+        [-x, y, a],
+      ],
+      square,
+    );
+    set(
+      f[5],
+      [
+        [-x, -y, b],
+        [x, -y, b],
+        [x, y, b],
+        [-x, y, b],
+      ],
+      square,
+    );
+  }
   function update() {
     const t = Math.min(video.currentTime, duration),
       d = +$("depth").value,
       gap = +$("gap").value;
     const last = Math.min(count - 1, Math.max(0, Math.ceil(t) - 1));
     const total = Math.max(0.006, t * d) + last * gap;
-    root.position.z = -total / 2;
-    slabs.forEach(({ g, faces: f, line }, i) => {
+    const showGhost = $("ghost").checked;
+    const fullDepth = duration * d + (count - 1) * gap;
+    // Keep the destination fixed while the solid front advances into it.
+    root.position.z = -(showGhost ? fullDepth : total) / 2;
+    ghosts.forEach(({ g, faces: f }, i) => {
+      const start = Math.max(t, i),
+        end = Math.min(duration, i + 1);
+      g.visible = showGhost && end - start > 0.00001;
+      if (!g.visible) return;
+      const a = start * d + i * gap,
+        b = end * d + i * gap;
+      updateFaces(f, a, b, start / duration, end / duration);
+      // No translucent plane across the live face, or accumulated internal fog.
+      f[4].visible = gap > 0 && start === i && i > last;
+      f[5].visible = gap > 0 || i === count - 1;
+    });
+    slabs.forEach(({ g, faces: f }, i) => {
       g.visible = i <= last;
       if (!g.visible) return;
       let elapsed = Math.max(0.0001, Math.min(1, t - i)),
@@ -114,89 +246,8 @@ async function init(config) {
         b = a + elapsed * d,
         ta = i / duration,
         tb = Math.min(duration, i + elapsed) / duration;
-      set(
-        f[0],
-        [
-          [-x, -y, a],
-          [-x, -y, b],
-          [-x, y, b],
-          [-x, y, a],
-        ],
-        [
-          [ta, 0],
-          [tb, 0],
-          [tb, 1],
-          [ta, 1],
-        ],
-      );
-      set(
-        f[1],
-        [
-          [x, -y, a],
-          [x, -y, b],
-          [x, y, b],
-          [x, y, a],
-        ],
-        [
-          [ta, 0],
-          [tb, 0],
-          [tb, 1],
-          [ta, 1],
-        ],
-      );
-      set(
-        f[2],
-        [
-          [-x, y, a],
-          [x, y, a],
-          [x, y, b],
-          [-x, y, b],
-        ],
-        [
-          [0, 1 - ta],
-          [1, 1 - ta],
-          [1, 1 - tb],
-          [0, 1 - tb],
-        ],
-      );
-      set(
-        f[3],
-        [
-          [-x, -y, a],
-          [x, -y, a],
-          [x, -y, b],
-          [-x, -y, b],
-        ],
-        [
-          [0, 1 - ta],
-          [1, 1 - ta],
-          [1, 1 - tb],
-          [0, 1 - tb],
-        ],
-      );
-      set(
-        f[4],
-        [
-          [-x, -y, a],
-          [x, -y, a],
-          [x, y, a],
-          [-x, y, a],
-        ],
-        square,
-      );
-      set(
-        f[5],
-        [
-          [-x, -y, b],
-          [x, -y, b],
-          [x, y, b],
-          [-x, y, b],
-        ],
-        square,
-      );
+      updateFaces(f, a, b, ta, tb);
       f[5].material = i === last ? liveMat : frozen[Math.min(i + 1, count - 1)];
-      line.position.z = (a + b) / 2;
-      line.scale.z = b - a;
       // Hide touching interior caps in solid mode to avoid coplanar flicker.
       f[4].visible = gap > 0 || i === 0;
       f[5].visible = gap > 0 || i === last;
@@ -212,6 +263,8 @@ async function init(config) {
       depth: total,
       spacing: gap,
       playing: !video.paused,
+      ghost: showGhost,
+      fullDepth,
     };
   }
   function view(name) {
@@ -322,11 +375,13 @@ async function init(config) {
     [
       ...sides,
       ...frozen,
+      ...ghostMaterials,
       liveMat,
       currentOutline.material,
-      ...slabs.map((s) => s.line.material),
     ].forEach((m) => m.dispose());
-    [left, right, top, bottom, ...frames, live].forEach((t) => t.dispose());
+    [left, right, top, bottom, ...frames, live, ...ghostTextures].forEach((t) =>
+      t.dispose(),
+    );
     renderer.dispose();
     renderer.domElement.remove();
   };

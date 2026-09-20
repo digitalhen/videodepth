@@ -279,13 +279,16 @@ footer {
 
 .file-picker {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 8px;
 }
 .file-button {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: #bbf68a;
   color: #15220e;
   border-radius: 5px;
@@ -335,4 +338,63 @@ footer {
   .file-picker {
     flex-wrap: wrap;
   }
+}
+
+/* Keep playback within reach while the viewer and settings scroll. */
+html {
+  scroll-padding-bottom: calc(var(--playback-height, 112px) + 24px);
+}
+body {
+  padding-bottom: calc(var(--playback-height, 112px) + 24px);
+}
+footer {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 20;
+  margin: 0;
+  padding: 14px 40px calc(14px + env(safe-area-inset-bottom, 0px));
+  background: rgb(16 21 18 / 96%);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid #2b3730;
+}
+footer .timeline {
+  min-width: 0;
+}
+footer .timeline input {
+  min-width: 0;
+}
+@media (max-width: 800px) {
+  footer {
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+  }
+  footer button,
+  footer select {
+    min-height: 44px;
+  }
+  footer .speed {
+    margin-left: auto;
+  }
+  footer .timeline input {
+    min-height: 30px;
+  }
+}
+
+@media (max-width: 360px) {
+  footer {
+    gap: 6px;
+  }
+  footer .speed select {
+    width: 62px;
+    margin-left: 4px;
+    padding-inline: 6px;
+  }
+}
+
+.file-picker > button,
+.file-button {
+  min-height: 40px;
+  line-height: 1.2;
+  padding: 10px 13px;
+  margin: 0;
 }
